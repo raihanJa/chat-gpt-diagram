@@ -25,6 +25,9 @@ class FlowDiagram extends StatefulWidget {
 
 class _FlowDiagramState extends State<FlowDiagram> {
   List<FlowComponent> _placedComponents = [];
+  FlowComponent? _selectedComponent;
+  FlowComponent? _startComponent;
+  FlowComponent? _endComponent;
 
   @override
   Widget build(BuildContext context) {
@@ -60,6 +63,18 @@ class _FlowDiagramState extends State<FlowDiagram> {
           Expanded(
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
+              onTapDown: (TapDownDetails details) {
+                final selectedComponent = _getSelectedComponent(details.localPosition);
+                setState(() {
+                  _selectedComponent = selectedComponent;
+                  if (_startComponent == null) {
+                    _startComponent = selectedComponent;
+                  } else {
+                    _endComponent = selectedComponent;
+                    _createArrow();
+                  }
+                });
+              },
               onPanUpdate: (DragUpdateDetails details) {
                 setState(() {
                   final selectedComponent = _getSelectedComponent(details.localPosition);
@@ -69,7 +84,7 @@ class _FlowDiagramState extends State<FlowDiagram> {
                 });
               },
               child: CustomPaint(
-                painter: FlowPainter(_placedComponents),
+                painter: FlowPainter(_placedComponents, _startComponent, _endComponent),
                 child: Container(),
               ),
             ),
@@ -129,18 +144,30 @@ class _FlowDiagramState extends State<FlowDiagram> {
       orElse: () => null as FlowComponent,
     );
   }
+
+  void _createArrow() {
+    if (_startComponent != null && _endComponent != null) {
+      final arrow = Arrow(_startComponent!.position, _endComponent!.position);
+      _placedComponents.add(arrow);
+      _startComponent = null;
+      _endComponent = null;
+    }
+  }
 }
 
 class FlowPainter extends CustomPainter {
   final List<FlowComponent> components;
+  final FlowComponent? startComponent;
+  final FlowComponent? endComponent;
 
-  FlowPainter(this.components);
+  FlowPainter(this.components, this.startComponent, this.endComponent);
 
   @override
   void paint(Canvas canvas, Size size) {
     for (final component in components) {
       _drawComponent(canvas, component);
     }
+    _drawArrow(canvas);
   }
 
   void _drawComponent(Canvas canvas, FlowComponent component) {
@@ -180,6 +207,26 @@ class FlowPainter extends CustomPainter {
     textPainter.paint(canvas, textOffset);
   }
 
+  void _drawArrow(Canvas canvas) {
+    if (startComponent != null && endComponent != null) {
+      final arrowPaint = Paint()
+        ..color = Colors.black
+        ..strokeWidth = 2.0;
+
+      final startPoint = Offset(
+        startComponent!.position.dx + 60,
+        startComponent!.position.dy + 120,
+      );
+
+      final endPoint = Offset(
+        endComponent!.position.dx + 60,
+        endComponent!.position.dy,
+      );
+
+      canvas.drawLine(startPoint, endPoint, arrowPaint);
+    }
+  }
+
   @override
   bool shouldRepaint(CustomPainter oldDelegate) {
     return true;
@@ -196,7 +243,7 @@ class FlowComponent {
   final Color borderColor;
   final ComponentType type;
   Offset position;
-  final String text;
+  late final String text;
 
   FlowComponent(this.color, this.borderColor, this.type, this.text)
       : position = Offset.zero;
@@ -206,5 +253,13 @@ class FlowComponent {
         point.dx <= position.dx + 120 &&
         position.dy <= point.dy &&
         point.dy <= position.dy + 120;
+  }
+}
+
+class Arrow extends FlowComponent {
+  Arrow(Offset startPosition, Offset endPosition)
+      : super(Colors.transparent, Colors.transparent, ComponentType.square, '') {
+    position = startPosition;
+    text = '';
   }
 }
