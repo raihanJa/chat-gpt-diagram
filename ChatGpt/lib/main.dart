@@ -41,15 +41,17 @@ class _FlowDiagramState extends State<FlowDiagram> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 IconButton(
+                  iconSize: 32,
                   icon: Icon(Icons.stop),
                   onPressed: () {
-                    _addNewComponent(ComponentType.square);
+                    _showTextPopup(ComponentType.square);
                   },
                 ),
                 IconButton(
+                  iconSize: 32,
                   icon: Icon(Icons.play_arrow),
                   onPressed: () {
-                    _addNewComponent(ComponentType.triangle);
+                    _showTextPopup(ComponentType.triangle);
                   },
                 ),
               ],
@@ -58,12 +60,6 @@ class _FlowDiagramState extends State<FlowDiagram> {
           Expanded(
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
-              onTapDown: (TapDownDetails details) {
-                final selectedComponent = _getSelectedComponent(details.localPosition);
-                if (selectedComponent != null) {
-                  _showTextPopup(selectedComponent);
-                }
-              },
               onPanUpdate: (DragUpdateDetails details) {
                 setState(() {
                   final selectedComponent = _getSelectedComponent(details.localPosition);
@@ -83,27 +79,11 @@ class _FlowDiagramState extends State<FlowDiagram> {
     );
   }
 
-  void _addNewComponent(ComponentType type) {
-    setState(() {
-      final newComponent = FlowComponent(Colors.white, Colors.black, type);
-      newComponent.position = Offset(100, 100); // Set initial position on the board
-      _placedComponents.add(newComponent);
-      _showTextPopup(newComponent);
-    });
-  }
-
-  FlowComponent? _getSelectedComponent(Offset position) {
-    return _placedComponents.firstWhere(
-          (component) => component.isPointInside(position),
-      orElse: () => null as FlowComponent,
-    );
-  }
-
-  void _showTextPopup(FlowComponent component) {
+  void _showTextPopup(ComponentType type) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        String newText = component.text;
+        String newText = '';
         return AlertDialog(
           title: Text('Enter Text'),
           content: TextField(
@@ -111,9 +91,7 @@ class _FlowDiagramState extends State<FlowDiagram> {
               newText = value;
             },
             onEditingComplete: () {
-              setState(() {
-                component.text = newText;
-              });
+              _addNewComponent(type, newText);
               Navigator.of(context).pop();
             },
           ),
@@ -126,9 +104,7 @@ class _FlowDiagramState extends State<FlowDiagram> {
             ),
             TextButton(
               onPressed: () {
-                setState(() {
-                  component.text = newText;
-                });
+                _addNewComponent(type, newText);
                 Navigator.of(context).pop();
               },
               child: Text('OK'),
@@ -136,6 +112,21 @@ class _FlowDiagramState extends State<FlowDiagram> {
           ],
         );
       },
+    );
+  }
+
+  void _addNewComponent(ComponentType type, String text) {
+    setState(() {
+      final newComponent = FlowComponent(Colors.white, Colors.black, type, text);
+      newComponent.position = Offset(100, 100); // Set initial position on the board
+      _placedComponents.add(newComponent);
+    });
+  }
+
+  FlowComponent? _getSelectedComponent(Offset position) {
+    return _placedComponents.firstWhere(
+          (component) => component.isPointInside(position),
+      orElse: () => null as FlowComponent,
     );
   }
 }
@@ -157,7 +148,7 @@ class FlowPainter extends CustomPainter {
       ..color = component.color
       ..style = PaintingStyle.fill;
 
-    final rect = Rect.fromLTWH(component.position.dx, component.position.dy, 80, 80);
+    final rect = Rect.fromLTWH(component.position.dx, component.position.dy, 120, 120);
     canvas.drawRect(rect, paint);
 
     final borderPaint = Paint()
@@ -179,11 +170,11 @@ class FlowPainter extends CustomPainter {
 
     textPainter.layout(
       minWidth: 0,
-      maxWidth: 80,
+      maxWidth: 120,
     );
 
-    final offsetX = (80 - textPainter.width) / 2;
-    final offsetY = (80 - textPainter.height) / 2;
+    final offsetX = (120 - textPainter.width) / 2;
+    final offsetY = (120 - textPainter.height) / 2;
     final textOffset = Offset(component.position.dx + offsetX, component.position.dy + offsetY);
 
     textPainter.paint(canvas, textOffset);
@@ -205,16 +196,15 @@ class FlowComponent {
   final Color borderColor;
   final ComponentType type;
   Offset position;
-  String text;
+  final String text;
 
-  FlowComponent(this.color, this.borderColor, this.type)
-      : position = Offset.zero,
-        text = '';
+  FlowComponent(this.color, this.borderColor, this.type, this.text)
+      : position = Offset.zero;
 
   bool isPointInside(Offset point) {
     return position.dx <= point.dx &&
-        point.dx <= position.dx + 80 &&
+        point.dx <= position.dx + 120 &&
         position.dy <= point.dy &&
-        point.dy <= position.dy + 80;
+        point.dy <= position.dy + 120;
   }
 }
